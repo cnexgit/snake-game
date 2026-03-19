@@ -6,7 +6,7 @@ import GameBoard from './components/GameBoard.vue'
   <div id="game">
     <h1>Snake Game</h1>
     <GameBoard />
-    <p class="footer">Use arrow keys to move</p>
+    <p class="footer">Use arrow keys or swipe to move</p>
   </div>
 </template>
 
@@ -16,7 +16,8 @@ import GameBoard from './components/GameBoard.vue'
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
+  width: 100vw;
+  height: 100vh;
   gap: 16px;
   font-family: system-ui, -apple-system, sans-serif;
   padding: 20px;
@@ -32,5 +33,20 @@ h1 {
 .footer {
   color: #64748b;
   font-size: 14px;
+}
+
+@media (max-width: 480px) {
+  #game {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  h1 {
+    font-size: 24px;
+  }
+
+  .footer {
+    font-size: 12px;
+  }
 }
 </style>

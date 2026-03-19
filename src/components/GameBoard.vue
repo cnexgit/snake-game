@@ -1,12 +1,12 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 const GRID_SIZE = 20
-const CELL_SIZE = 20
-const CANVAS_SIZE = GRID_SIZE * CELL_SIZE
 const TICK_INTERVAL = 150
 
 const canvas = ref(null)
+const canvasSize = ref(400)
+const cellSize = computed(() => canvasSize.value / GRID_SIZE)
 const score = ref(0)
 const gameOver = ref(false)
 const gameStarted = ref(false)
@@ -23,6 +23,15 @@ const direction = ref({ x: 1, y: 0 })
 const nextDirection = ref({ x: 1, y: 0 })
 const food = ref(null)
 let gameLoop = null
+let touchStartX = 0
+let touchStartY = 0
+
+function calculateCanvasSize() {
+  const maxWidth = window.innerWidth - 24
+  const maxHeight = window.innerHeight - 160
+  const maxDim = Math.min(maxWidth, maxHeight, 400)
+  canvasSize.value = Math.floor(maxDim / GRID_SIZE) * GRID_SIZE
+}
 
 function spawnFood() {
   let x, y
@@ -35,40 +44,42 @@ function spawnFood() {
 
 function draw() {
   const ctx = canvas.value.getContext('2d')
+  const cs = cellSize.value
+  const size = canvasSize.value
 
-  ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE)
+  ctx.clearRect(0, 0, size, size)
 
   ctx.strokeStyle = '#2a2a4a'
   ctx.lineWidth = 0.5
   for (let i = 0; i <= GRID_SIZE; i++) {
     ctx.beginPath()
-    ctx.moveTo(i * CELL_SIZE, 0)
-    ctx.lineTo(i * CELL_SIZE, CANVAS_SIZE)
+    ctx.moveTo(i * cs, 0)
+    ctx.lineTo(i * cs, size)
     ctx.stroke()
 
     ctx.beginPath()
-    ctx.moveTo(0, i * CELL_SIZE)
-    ctx.lineTo(CANVAS_SIZE, i * CELL_SIZE)
+    ctx.moveTo(0, i * cs)
+    ctx.lineTo(size, i * cs)
     ctx.stroke()
   }
 
   if (food.value) {
     ctx.fillStyle = '#ef4444'
     ctx.fillRect(
-      food.value.x * CELL_SIZE + 1,
-      food.value.y * CELL_SIZE + 1,
-      CELL_SIZE - 2,
-      CELL_SIZE - 2
+      food.value.x * cs + 1,
+      food.value.y * cs + 1,
+      cs - 2,
+      cs - 2
     )
   }
 
   snake.value.forEach((segment, index) => {
     ctx.fillStyle = index === 0 ? '#4ade80' : '#22c55e'
     ctx.fillRect(
-      segment.x * CELL_SIZE + 1,
-      segment.y * CELL_SIZE + 1,
-      CELL_SIZE - 2,
-      CELL_SIZE - 2
+      segment.x * cs + 1,
+      segment.y * cs + 1,
+      cs - 2,
+      cs - 2
     )
   })
 }
@@ -117,24 +128,44 @@ function tick() {
   draw()
 }
 
-function handleKeydown(e) {
+function changeDirection(newDir) {
   if (!gameStarted.value || gameOver.value) return
-
-  const key = e.key
   const dir = direction.value
+  if (newDir.x + dir.x === 0 && newDir.y + dir.y === 0) return
+  nextDirection.value = newDir
+}
 
-  if (key === 'ArrowUp' && dir.y !== 1) {
-    nextDirection.value = { x: 0, y: -1 }
+function handleKeydown(e) {
+  const keyMap = {
+    ArrowUp: { x: 0, y: -1 },
+    ArrowDown: { x: 0, y: 1 },
+    ArrowLeft: { x: -1, y: 0 },
+    ArrowRight: { x: 1, y: 0 },
+  }
+  const newDir = keyMap[e.key]
+  if (newDir) {
+    changeDirection(newDir)
     e.preventDefault()
-  } else if (key === 'ArrowDown' && dir.y !== -1) {
-    nextDirection.value = { x: 0, y: 1 }
-    e.preventDefault()
-  } else if (key === 'ArrowLeft' && dir.x !== 1) {
-    nextDirection.value = { x: -1, y: 0 }
-    e.preventDefault()
-  } else if (key === 'ArrowRight' && dir.x !== -1) {
-    nextDirection.value = { x: 1, y: 0 }
-    e.preventDefault()
+  }
+}
+
+function handleTouchStart(e) {
+  const touch = e.touches[0]
+  touchStartX = touch.clientX
+  touchStartY = touch.clientY
+}
+
+function handleTouchEnd(e) {
+  if (!gameStarted.value || gameOver.value) return
+  const touch = e.changedTouches[0]
+  const dx = touch.clientX - touchStartX
+  const dy = touch.clientY - touchStartY
+  const minSwipe = 30
+  if (Math.abs(dx) < minSwipe && Math.abs(dy) < minSwipe) return
+  if (Math.abs(dx) > Math.abs(dy)) {
+    changeDirection(dx > 0 ? { x: 1, y: 0 } : { x: -1, y: 0 })
+  } else {
+    changeDirection(dy > 0 ? { x: 0, y: 1 } : { x: 0, y: -1 })
   }
 }
 
@@ -157,30 +188,42 @@ function resetGame() {
   gameLoop = setInterval(tick, TICK_INTERVAL)
 }
 
+function handleResize() {
+  calculateCanvasSize()
+  if (canvas.value) requestAnimationFrame(() => draw())
+}
+
 onMounted(() => {
-  draw()
+  calculateCanvasSize()
+  requestAnimationFrame(() => draw())
   window.addEventListener('keydown', handleKeydown)
+  window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
   if (gameLoop) clearInterval(gameLoop)
   window.removeEventListener('keydown', handleKeydown)
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
 <template>
-  <div class="game-board">
+  <div
+    class="game-board"
+    @touchstart.prevent="handleTouchStart"
+    @touchend.prevent="handleTouchEnd"
+  >
     <div class="score">Score: {{ score }}</div>
     <div class="canvas-wrapper">
       <canvas
         ref="canvas"
-        :width="CANVAS_SIZE"
-        :height="CANVAS_SIZE"
+        :width="canvasSize"
+        :height="canvasSize"
       />
       <div v-if="!gameStarted" class="overlay">
         <div class="overlay-content">
           <h2 class="start-title">Snake Game</h2>
-          <p class="start-hint">Use arrow keys to control</p>
+          <p class="start-hint">Use arrow keys or swipe to control</p>
           <button @click="beginGame">Start Game</button>
         </div>
       </div>
@@ -202,6 +245,7 @@ onUnmounted(() => {
   justify-content: center;
   align-items: center;
   gap: 12px;
+  touch-action: none;
 }
 
 .score {
@@ -275,5 +319,28 @@ canvas {
 
 .overlay-content button:hover {
   background: #22c55e;
+}
+
+@media (max-width: 480px) {
+  .score {
+    font-size: 20px;
+  }
+
+  .start-title {
+    font-size: 28px;
+  }
+
+  .game-over-title {
+    font-size: 28px;
+  }
+
+  .final-score {
+    font-size: 18px;
+  }
+
+  .overlay-content button {
+    padding: 14px 36px;
+    font-size: 20px;
+  }
 }
 </style>

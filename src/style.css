@@ -4,8 +4,17 @@
   box-sizing: border-box;
 }
 
-body {
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
   background-color: #1a1a2e;
   color: #ffffff;
   font-family: system-ui, -apple-system, sans-serif;
+  touch-action: none;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
 }
