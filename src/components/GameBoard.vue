@@ -1,17 +1,56 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 const GRID_SIZE = 20
 const CELL_SIZE = 20
 const CANVAS_SIZE = GRID_SIZE * CELL_SIZE
+const TICK_MS = 150
 
 const canvas = ref(null)
+let gameLoop = null
 
 const snake = ref([
   { x: 11, y: 10 },
   { x: 10, y: 10 },
   { x: 9, y: 10 },
 ])
+
+const direction = ref({ x: 1, y: 0 })
+let nextDirection = { x: 1, y: 0 }
+
+function isOpposite(a, b) {
+  return a.x + b.x === 0 && a.y + b.y === 0
+}
+
+function handleKeydown(e) {
+  const keyMap = {
+    ArrowUp: { x: 0, y: -1 },
+    ArrowDown: { x: 0, y: 1 },
+    ArrowLeft: { x: -1, y: 0 },
+    ArrowRight: { x: 1, y: 0 },
+  }
+
+  const newDir = keyMap[e.key]
+  if (newDir && !isOpposite(newDir, direction.value)) {
+    nextDirection = newDir
+    e.preventDefault()
+  }
+}
+
+function tick() {
+  direction.value = { ...nextDirection }
+
+  const head = snake.value[0]
+  const newHead = {
+    x: head.x + direction.value.x,
+    y: head.y + direction.value.y,
+  }
+
+  snake.value.unshift(newHead)
+  snake.value.pop()
+
+  draw()
+}
 
 function draw() {
   const ctx = canvas.value.getContext('2d')
@@ -45,6 +84,13 @@ function draw() {
 
 onMounted(() => {
   draw()
+  window.addEventListener('keydown', handleKeydown)
+  gameLoop = setInterval(tick, TICK_MS)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown)
+  if (gameLoop) clearInterval(gameLoop)
 })
 </script>
 
