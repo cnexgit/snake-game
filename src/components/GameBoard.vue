@@ -4,10 +4,9 @@ import { ref, onMounted, onUnmounted } from 'vue'
 const GRID_SIZE = 20
 const CELL_SIZE = 20
 const CANVAS_SIZE = GRID_SIZE * CELL_SIZE
-const TICK_MS = 150
+const TICK_INTERVAL = 150
 
 const canvas = ref(null)
-let gameLoop = null
 
 const snake = ref([
   { x: 11, y: 10 },
@@ -16,41 +15,8 @@ const snake = ref([
 ])
 
 const direction = ref({ x: 1, y: 0 })
-let nextDirection = { x: 1, y: 0 }
-
-function isOpposite(a, b) {
-  return a.x + b.x === 0 && a.y + b.y === 0
-}
-
-function handleKeydown(e) {
-  const keyMap = {
-    ArrowUp: { x: 0, y: -1 },
-    ArrowDown: { x: 0, y: 1 },
-    ArrowLeft: { x: -1, y: 0 },
-    ArrowRight: { x: 1, y: 0 },
-  }
-
-  const newDir = keyMap[e.key]
-  if (newDir && !isOpposite(newDir, direction.value)) {
-    nextDirection = newDir
-    e.preventDefault()
-  }
-}
-
-function tick() {
-  direction.value = { ...nextDirection }
-
-  const head = snake.value[0]
-  const newHead = {
-    x: head.x + direction.value.x,
-    y: head.y + direction.value.y,
-  }
-
-  snake.value.unshift(newHead)
-  snake.value.pop()
-
-  draw()
-}
+const nextDirection = ref({ x: 1, y: 0 })
+let gameLoop = null
 
 function draw() {
   const ctx = canvas.value.getContext('2d')
@@ -82,15 +48,50 @@ function draw() {
   })
 }
 
+function tick() {
+  direction.value = { ...nextDirection.value }
+
+  const head = snake.value[0]
+  const newHead = {
+    x: head.x + direction.value.x,
+    y: head.y + direction.value.y,
+  }
+
+  snake.value.unshift(newHead)
+  snake.value.pop()
+
+  draw()
+}
+
+function handleKeydown(e) {
+  const key = e.key
+  const dir = direction.value
+
+  if (key === 'ArrowUp' && dir.y !== 1) {
+    nextDirection.value = { x: 0, y: -1 }
+  } else if (key === 'ArrowDown' && dir.y !== -1) {
+    nextDirection.value = { x: 0, y: 1 }
+  } else if (key === 'ArrowLeft' && dir.x !== 1) {
+    nextDirection.value = { x: -1, y: 0 }
+  } else if (key === 'ArrowRight' && dir.x !== -1) {
+    nextDirection.value = { x: 1, y: 0 }
+  }
+}
+
+function startGame() {
+  if (gameLoop) clearInterval(gameLoop)
+  gameLoop = setInterval(tick, TICK_INTERVAL)
+}
+
 onMounted(() => {
   draw()
   window.addEventListener('keydown', handleKeydown)
-  gameLoop = setInterval(tick, TICK_MS)
+  startGame()
 })
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeydown)
   if (gameLoop) clearInterval(gameLoop)
+  window.removeEventListener('keydown', handleKeydown)
 })
 </script>
 
