@@ -9,6 +9,7 @@ const TICK_INTERVAL = 150
 const canvas = ref(null)
 const score = ref(0)
 const gameOver = ref(false)
+const gameStarted = ref(false)
 
 const INITIAL_SNAKE = [
   { x: 11, y: 10 },
@@ -117,23 +118,30 @@ function tick() {
 }
 
 function handleKeydown(e) {
+  if (!gameStarted.value || gameOver.value) return
+
   const key = e.key
   const dir = direction.value
 
   if (key === 'ArrowUp' && dir.y !== 1) {
     nextDirection.value = { x: 0, y: -1 }
+    e.preventDefault()
   } else if (key === 'ArrowDown' && dir.y !== -1) {
     nextDirection.value = { x: 0, y: 1 }
+    e.preventDefault()
   } else if (key === 'ArrowLeft' && dir.x !== 1) {
     nextDirection.value = { x: -1, y: 0 }
+    e.preventDefault()
   } else if (key === 'ArrowRight' && dir.x !== -1) {
     nextDirection.value = { x: 1, y: 0 }
+    e.preventDefault()
   }
 }
 
-function startGame() {
-  if (gameLoop) clearInterval(gameLoop)
+function beginGame() {
+  gameStarted.value = true
   spawnFood()
+  draw()
   gameLoop = setInterval(tick, TICK_INTERVAL)
 }
 
@@ -144,14 +152,14 @@ function resetGame() {
   score.value = 0
   gameOver.value = false
   food.value = null
+  spawnFood()
   draw()
-  startGame()
+  gameLoop = setInterval(tick, TICK_INTERVAL)
 }
 
 onMounted(() => {
   draw()
   window.addEventListener('keydown', handleKeydown)
-  startGame()
 })
 
 onUnmounted(() => {
@@ -169,10 +177,17 @@ onUnmounted(() => {
         :width="CANVAS_SIZE"
         :height="CANVAS_SIZE"
       />
-      <div v-if="gameOver" class="game-over-overlay">
-        <div class="game-over-content">
-          <h2>Game Over</h2>
-          <p>Final Score: {{ score }}</p>
+      <div v-if="!gameStarted" class="overlay">
+        <div class="overlay-content">
+          <h2 class="start-title">Snake Game</h2>
+          <p class="start-hint">Use arrow keys to control</p>
+          <button @click="beginGame">Start Game</button>
+        </div>
+      </div>
+      <div v-if="gameOver" class="overlay">
+        <div class="overlay-content">
+          <h2 class="game-over-title">Game Over</h2>
+          <p class="final-score">Final Score: {{ score }}</p>
           <button @click="resetGame">Play Again</button>
         </div>
       </div>
@@ -186,51 +201,68 @@ onUnmounted(() => {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .score {
   font-size: 24px;
   color: #4ade80;
   font-weight: bold;
+  letter-spacing: 1px;
 }
 
 .canvas-wrapper {
   position: relative;
+  border-radius: 4px;
+  overflow: hidden;
 }
 
 canvas {
   border: 2px solid #4ade80;
   background-color: #0f0f23;
+  display: block;
 }
 
-.game-over-overlay {
+.overlay {
   position: absolute;
   inset: 0;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.85);
 }
 
-.game-over-content {
+.overlay-content {
   text-align: center;
   color: #ffffff;
 }
 
-.game-over-content h2 {
+.start-title {
+  font-size: 40px;
+  color: #4ade80;
+  margin-bottom: 8px;
+}
+
+.start-hint {
+  font-size: 16px;
+  color: #94a3b8;
+  margin-bottom: 24px;
+}
+
+.game-over-title {
   font-size: 36px;
   color: #ef4444;
   margin-bottom: 10px;
 }
 
-.game-over-content p {
+.final-score {
   font-size: 20px;
+  color: #4ade80;
   margin-bottom: 20px;
 }
 
-.game-over-content button {
-  padding: 10px 24px;
+.overlay-content button {
+  padding: 12px 32px;
   font-size: 18px;
   background: #4ade80;
   color: #0f0f23;
@@ -238,9 +270,10 @@ canvas {
   border-radius: 6px;
   cursor: pointer;
   font-weight: bold;
+  transition: background 0.2s;
 }
 
-.game-over-content button:hover {
+.overlay-content button:hover {
   background: #22c55e;
 }
 </style>
