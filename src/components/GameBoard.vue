@@ -8,12 +8,15 @@ const TICK_INTERVAL = 150
 
 const canvas = ref(null)
 const score = ref(0)
+const gameOver = ref(false)
 
-const snake = ref([
+const INITIAL_SNAKE = [
   { x: 11, y: 10 },
   { x: 10, y: 10 },
   { x: 9, y: 10 },
-])
+]
+
+const snake = ref([...INITIAL_SNAKE.map(s => ({ ...s }))])
 
 const direction = ref({ x: 1, y: 0 })
 const nextDirection = ref({ x: 1, y: 0 })
@@ -69,6 +72,24 @@ function draw() {
   })
 }
 
+function checkCollision(head) {
+  if (head.x < 0 || head.x >= GRID_SIZE || head.y < 0 || head.y >= GRID_SIZE) {
+    return true
+  }
+  if (snake.value.some((seg, i) => i > 0 && seg.x === head.x && seg.y === head.y)) {
+    return true
+  }
+  return false
+}
+
+function stopGame() {
+  if (gameLoop) {
+    clearInterval(gameLoop)
+    gameLoop = null
+  }
+  gameOver.value = true
+}
+
 function tick() {
   direction.value = { ...nextDirection.value }
 
@@ -76,6 +97,11 @@ function tick() {
   const newHead = {
     x: head.x + direction.value.x,
     y: head.y + direction.value.y,
+  }
+
+  if (checkCollision(newHead)) {
+    stopGame()
+    return
   }
 
   snake.value.unshift(newHead)
@@ -111,6 +137,17 @@ function startGame() {
   gameLoop = setInterval(tick, TICK_INTERVAL)
 }
 
+function resetGame() {
+  snake.value = INITIAL_SNAKE.map(s => ({ ...s }))
+  direction.value = { x: 1, y: 0 }
+  nextDirection.value = { x: 1, y: 0 }
+  score.value = 0
+  gameOver.value = false
+  food.value = null
+  draw()
+  startGame()
+}
+
 onMounted(() => {
   draw()
   window.addEventListener('keydown', handleKeydown)
@@ -126,11 +163,20 @@ onUnmounted(() => {
 <template>
   <div class="game-board">
     <div class="score">Score: {{ score }}</div>
-    <canvas
-      ref="canvas"
-      :width="CANVAS_SIZE"
-      :height="CANVAS_SIZE"
-    />
+    <div class="canvas-wrapper">
+      <canvas
+        ref="canvas"
+        :width="CANVAS_SIZE"
+        :height="CANVAS_SIZE"
+      />
+      <div v-if="gameOver" class="game-over-overlay">
+        <div class="game-over-content">
+          <h2>Game Over</h2>
+          <p>Final Score: {{ score }}</p>
+          <button @click="resetGame">Play Again</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -149,8 +195,52 @@ onUnmounted(() => {
   font-weight: bold;
 }
 
+.canvas-wrapper {
+  position: relative;
+}
+
 canvas {
   border: 2px solid #4ade80;
   background-color: #0f0f23;
+}
+
+.game-over-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.game-over-content {
+  text-align: center;
+  color: #ffffff;
+}
+
+.game-over-content h2 {
+  font-size: 36px;
+  color: #ef4444;
+  margin-bottom: 10px;
+}
+
+.game-over-content p {
+  font-size: 20px;
+  margin-bottom: 20px;
+}
+
+.game-over-content button {
+  padding: 10px 24px;
+  font-size: 18px;
+  background: #4ade80;
+  color: #0f0f23;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.game-over-content button:hover {
+  background: #22c55e;
 }
 </style>
