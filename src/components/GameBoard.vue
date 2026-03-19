@@ -7,6 +7,7 @@ const CANVAS_SIZE = GRID_SIZE * CELL_SIZE
 const TICK_INTERVAL = 150
 
 const canvas = ref(null)
+const score = ref(0)
 
 const snake = ref([
   { x: 11, y: 10 },
@@ -16,7 +17,17 @@ const snake = ref([
 
 const direction = ref({ x: 1, y: 0 })
 const nextDirection = ref({ x: 1, y: 0 })
+const food = ref(null)
 let gameLoop = null
+
+function spawnFood() {
+  let x, y
+  do {
+    x = Math.floor(Math.random() * GRID_SIZE)
+    y = Math.floor(Math.random() * GRID_SIZE)
+  } while (snake.value.some(seg => seg.x === x && seg.y === y))
+  food.value = { x, y }
+}
 
 function draw() {
   const ctx = canvas.value.getContext('2d')
@@ -35,6 +46,16 @@ function draw() {
     ctx.moveTo(0, i * CELL_SIZE)
     ctx.lineTo(CANVAS_SIZE, i * CELL_SIZE)
     ctx.stroke()
+  }
+
+  if (food.value) {
+    ctx.fillStyle = '#ef4444'
+    ctx.fillRect(
+      food.value.x * CELL_SIZE + 1,
+      food.value.y * CELL_SIZE + 1,
+      CELL_SIZE - 2,
+      CELL_SIZE - 2
+    )
   }
 
   snake.value.forEach((segment, index) => {
@@ -58,7 +79,13 @@ function tick() {
   }
 
   snake.value.unshift(newHead)
-  snake.value.pop()
+
+  if (food.value && newHead.x === food.value.x && newHead.y === food.value.y) {
+    score.value += 10
+    spawnFood()
+  } else {
+    snake.value.pop()
+  }
 
   draw()
 }
@@ -80,6 +107,7 @@ function handleKeydown(e) {
 
 function startGame() {
   if (gameLoop) clearInterval(gameLoop)
+  spawnFood()
   gameLoop = setInterval(tick, TICK_INTERVAL)
 }
 
@@ -97,6 +125,7 @@ onUnmounted(() => {
 
 <template>
   <div class="game-board">
+    <div class="score">Score: {{ score }}</div>
     <canvas
       ref="canvas"
       :width="CANVAS_SIZE"
@@ -108,8 +137,16 @@ onUnmounted(() => {
 <style scoped>
 .game-board {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 10px;
+}
+
+.score {
+  font-size: 24px;
+  color: #4ade80;
+  font-weight: bold;
 }
 
 canvas {
