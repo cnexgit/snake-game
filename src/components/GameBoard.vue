@@ -208,13 +208,13 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div
-    class="game-board"
-    @touchstart.prevent="handleTouchStart"
-    @touchend.prevent="handleTouchEnd"
-  >
+  <div class="game-board">
     <div class="score">Score: {{ score }}</div>
-    <div class="canvas-wrapper">
+    <div
+      class="canvas-wrapper"
+      @touchstart.prevent="handleTouchStart"
+      @touchend.prevent="handleTouchEnd"
+    >
       <canvas
         ref="canvas"
         :width="canvasSize"
@@ -224,14 +224,14 @@ onUnmounted(() => {
         <div class="overlay-content">
           <h2 class="start-title">Snake Game</h2>
           <p class="start-hint">Use arrow keys or swipe to control</p>
-          <button @click="beginGame">Start Game</button>
+          <button @click="beginGame" @touchend.stop="beginGame">Start Game</button>
         </div>
       </div>
       <div v-if="gameOver" class="overlay">
         <div class="overlay-content">
           <h2 class="game-over-title">Game Over</h2>
           <p class="final-score">Final Score: {{ score }}</p>
-          <button @click="resetGame">Play Again</button>
+          <button @click="resetGame" @touchend.stop="resetGame">Play Again</button>
         </div>
       </div>
     </div>
